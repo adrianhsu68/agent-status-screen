@@ -78,11 +78,12 @@
   .name svg { width: 1em; height: 1em; flex: none; color: var(--text); }
   .state { align-self: flex-start; font-size: 9.5vh; font-weight: 900; line-height: 1.2; padding: .02em .3em;
            border-radius: 1.2vh; white-space: nowrap; }
+  html[lang=en] .state { font-size: 6.5vh; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }   /* English words are wider than 2-3 CJK characters */
   .s-run  .state { color: var(--ok); background: color-mix(in srgb, var(--ok) 16%, transparent); }
   .s-wait .state { color: #1a1205; background: var(--warn); }
   .s-done .state { color: var(--info); background: color-mix(in srgb, var(--info) 16%, transparent); }
   .s-off  .state { color: var(--dim); background: var(--panel-2); }
-  .act { font-size: 6vh; line-height: 1.25; color: var(--text); overflow: hidden; word-break: break-all;
+  .act { font-size: 6vh; line-height: 1.25; color: var(--text); overflow: hidden; overflow-wrap: anywhere;
          display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
   .s-off .act, .s-done .act { color: var(--muted); }
   .agent.s-wait { animation: attention 1.2s ease-in-out infinite; }
@@ -99,7 +100,7 @@
     body.no-wx main { grid-template-rows: auto 1fr 1fr; grid-template-areas: "clock" "claude" "codex"; }
     #clockCard { padding: 2vh 3vh; }
     #clock { font-size: 22vw; }
-    #sub, .name, .act { font-size: 5vw; } .state { font-size: 8vw; } #rainAlert { font-size: 6vw; }
+    #sub, .name, .act { font-size: 5vw; } .state { font-size: 8vw; } html[lang=en] .state { font-size: 6vw; } #rainAlert { font-size: 6vw; }
     #wIcon, #wTemp { font-size: 11vw; } #wRain { font-size: 13vw; }
     #hours > div { font-size: 4.5vw; } #hours b { font-size: 5.5vw; }
     .pet-box { height: 20vh; }
@@ -159,7 +160,7 @@
                interrupted: '已中斷', needs: '需要你', thinking: '思考中…', now: '剛剛', min: n => `${n} 分前`,
                hour: n => `${n} 小時前`, day: n => `${n} 天前`, rainAt: h => `☔ ${h} 點會下雨`,
                umbrella: '☔ 記得帶傘', noServer: '連不到伺服器', demo: '示範資料' },
-    en:      { offline: 'Offline', run: 'Running', wait: 'Needs you', done: 'Done', approve: 'Approve ',
+    en:      { offline: 'Offline', run: 'Running', wait: 'Waiting', done: 'Done', approve: 'Approve ',
                question: 'Has a question', interrupted: 'Interrupted', needs: 'Needs you', thinking: 'Thinking…',
                now: 'just now', min: n => `${n} min ago`, hour: n => `${n} h ago`, day: n => `${n} d ago`,
                rainAt: h => `☔ Rain at ${h}:00`, umbrella: '☔ Take an umbrella', noServer: 'Server not reachable',

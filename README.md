@@ -1,140 +1,149 @@
 # agent-status-screen
 
-把 **Claude Code** 和 **Codex** 現在在做什麼，顯示在桌上一個小螢幕：執行中、等你核准、完成、離線，
-加上正在用的工具和檔名。做事時不用一直切回終端機，看一眼就知道要不要回去按核准。
+**English** | [繁體中文](README.zh-TW.md)
 
-畫面（2x2）：時鐘＋日期、天氣＋之後 3 小時降雨機率、Claude 卡、Codex 卡。每張卡都有一隻會依狀態換動作的貓「必嚕」
-（思考時抬頭、讀檔時歪頭、改檔時用筆電、等你時招手、完成時跳一下、離線時睡覺）。
+![Screenshot](docs/screenshot.png)
 
-原本是做給 iScreen 這種 Win+K 投影的小型無線螢幕（實體約 9 x 5.5 cm），所以字都很大，只放一眼要看的東西；
-任何「第二個螢幕」都能用，直接開瀏覽器看也可以。
+A small always-on status screen for **Claude Code** and **Codex**. At a glance you can see whether each agent is
+running, waiting for your approval, done or offline, plus the tool and file it is working on. You don't have to keep
+switching back to the terminal to find out whether it needs you.
 
-## 原理
+The page has four cards: clock and date, weather with the rain chance for the next 3 hours, Claude, and Codex.
+Each agent card has a cat, Beelu, whose pose follows the state: looking up while thinking, tilting the head while
+reading, typing on a laptop while editing, waving when the agent needs you, jumping when done and sleeping when
+offline.
+
+It was made for a tiny wireless display (about 9 x 5.5 cm) connected with Win+K, so the text is large and only
+glanceable information is shown. Any second monitor works, and so does a normal browser window.
+
+## How it works
 
 ```
-Claude Code / Codex hooks ──UDP 127.0.0.1:57999──▶ server.py ──HTTP 127.0.0.1:8765──▶ 瀏覽器 kiosk（第二個螢幕）
-                                                      └── Open-Meteo 天氣（每 30 分鐘）
+Claude Code / Codex hooks ──UDP 127.0.0.1:57999──▶ server.py ──HTTP 127.0.0.1:8765──▶ browser kiosk (second screen)
+                                                      └── Open-Meteo weather (every 30 min)
 ```
 
-- 小螢幕對 Windows 來說就是一台顯示器。Win+K 連上、模式選「**延伸**」，它就變成第二個螢幕。
-- `screen.ps1` 每 3 秒檢查有沒有「寬度 ≤ 1366 的非主螢幕」：出現就用 Chrome / Edge 的 `--kiosk` 全螢幕開在上面，消失就關掉。
-- 伺服器和 UDP 都只聽 `127.0.0.1`，不對網路開 port。
-- **hooks 只送狀態和「工具名稱＋檔名／指令第一個字」**（例如 `Edit main.py`、`Bash git`），
-  不送你的提問、完整指令、檔案內容或工具輸出。伺服器沒開時封包直接丟掉，不會拖慢 Claude Code / Codex。
+- To Windows, a wireless display is just another monitor. Connect it with Win+K and choose **Extend**.
+- Every 3 seconds `screen.ps1` looks for a non-primary monitor no wider than 1366 px. When one appears, it opens the
+  page there in Chrome / Edge `--kiosk` mode (full screen); when the monitor goes away, it closes the window.
+- The server and the UDP receiver listen on `127.0.0.1` only. Nothing is opened to the network.
+- **The hooks send only the state and "tool name + file name / first command word"** (for example `Edit main.py`,
+  `Bash git`). They never send your prompts, full commands, file contents or tool output. When a command name is not a
+  plain file-name-like word, only the tool name is sent. If the server is not running, the packets are simply dropped,
+  so Claude Code and Codex are never slowed down.
 
-## 需求
+## Requirements
 
-- Windows 10 / 11（自動開 kiosk 的 `screen.ps1` 只支援 Windows；`server.py` 本身任何系統都能跑）
-- Python 3.9 以上，不用裝其他套件（只有在 `pet` 指向完整的 Codex pet spritesheet 時才需要 Pillow）
-- Chrome 或 Edge
+- Windows 10 / 11. Only `screen.ps1` (the automatic kiosk) is Windows-only; `server.py` runs anywhere.
+- Python 3.9 or later. No packages needed, except Pillow if you use your own full Codex pet spritesheet.
+- Chrome or Edge.
 
-> Windows 上的 `python` 指令可能是 Microsoft Store 的空殼，建議用 `py -3`（Python 官方安裝程式附的 launcher）。
+> On Windows, the `python` command may be the Microsoft Store placeholder. Use `py -3` (the launcher that comes with
+> the installer from python.org).
 
-## 安裝
+## Setup
 
-1. 下載這個 repo，例如放在 `C:\tools\agent-status-screen`。路徑**不要有空白**（Codex hook 的指令格式需要）。
-2. 複製 `config.example.json` 成 `config.json`，改成你要的設定（見下方「設定」）。不建也可以，會用預設值（沒有天氣卡、全天亮）。
-3. 設定 hooks（見下方），把範例裡的 `C:\path\to\agent-status-screen` 換成你的路徑。
-4. 雙擊 `screen.cmd`。之後 Win+K 連上小螢幕，畫面就會自動出現。
-   - 開機自動啟動：Win+R 輸入 `shell:startup`，在裡面建一個捷徑指向 `screen.cmd`。
-   - 全部關掉：`screen.cmd -Stop`
-   - 沒有小螢幕、只想在瀏覽器看：伺服器啟動後打開 <http://127.0.0.1:8765/>
+1. Download this repository, for example to `C:\tools\agent-status-screen`. **The path must not contain spaces**
+   (the Codex hook command needs that).
+2. Optional: copy `config.example.json` to `config.json` and edit it (see [Configuration](#configuration)).
+   Without it you get the defaults: no weather card, screen always on, Traditional Chinese text.
+   For English, set `"lang": "en"`.
+3. Set up the hooks (below). In the examples, replace `C:\path\to\agent-status-screen` with your path.
+4. Double-click `screen.cmd`. When you connect the small screen with Win+K, the page opens there automatically.
+   - Start at sign-in: press Win+R, type `shell:startup`, and put a shortcut to `screen.cmd` in that folder.
+   - Stop everything: `screen.cmd -Stop`
+   - No small screen: once the server is running, open <http://127.0.0.1:8765/> in any browser.
+   - Use a normal external monitor instead: by default only monitors up to 1366 px wide are used, so your work
+     monitor is left alone. Run `screen.cmd -Stop`, then `screen.cmd -MaxWidth 1920` to allow a 1920 px wide monitor
+     (the whole monitor becomes the status page). Add the same argument to the startup shortcut.
 
 ### Claude Code hooks
 
-把 [hooks/claude-settings.example.json](hooks/claude-settings.example.json) 的 `hooks` 合併進
-`%USERPROFILE%\.claude\settings.json`（已經有 `hooks` 的話，把各事件的項目加進去）。
-全部是 `async`，不會讓 Claude Code 等。
+Merge the `hooks` section of [hooks/claude-settings.example.json](hooks/claude-settings.example.json) into
+`%USERPROFILE%\.claude\settings.json`. If you already have `hooks`, add these entries to each event. All of them are
+`async`, so Claude Code never waits for them.
 
-| 事件 | 送出 |
+| Event | Sends |
 |---|---|
 | `UserPromptSubmit` | `RUN\|thinking...` |
-| `PreToolUse` | `RUN\|<工具> <檔名／指令>`；`AskUserQuestion` → `WAIT\|question` |
-| `PostToolUse` | `RUN`（核准後回到執行中） |
-| `Notification`（權限、對話框） | `WAIT\|approve <工具>` |
+| `PreToolUse` | `RUN\|<tool> <file / command>`; `AskUserQuestion` → `WAIT\|question` |
+| `PostToolUse` | `RUN` (back to running after you approve) |
+| `Notification` (permission prompt, dialog) | `WAIT\|approve <tool>` |
 | `Stop` | `DONE` |
 | `SessionEnd` | `OFF\|` |
 
-測試：`$env:AGENT_STATUS_DRYRUN=1` 後執行腳本，只印出要送的封包，不會真的送。
+Test: set `$env:AGENT_STATUS_DRYRUN=1` and run the script; it prints the packet instead of sending it.
 
 ### Codex hooks
 
-把 [hooks/codex-hooks.example.json](hooks/codex-hooks.example.json) 存成 `%USERPROFILE%\.codex\hooks.json`
-（已經有的話合併進去），然後在 Codex 裡用 `/hooks` 檢視並信任它們；沒信任的 hook 會被跳過。
-指令裡的路徑不能有空白，也不要在前面加引號。
+Save [hooks/codex-hooks.example.json](hooks/codex-hooks.example.json) as `%USERPROFILE%\.codex\hooks.json` (or merge
+it into your existing file), then review and trust the hooks with `/hooks` in Codex. Untrusted hooks are skipped.
+The path in the command must not contain spaces, and do not put quotes around it.
 
-測試：`echo {"hook_event_name":"Stop"} | py -3 hooks\codex-status.py --dry-run`
+Test: `echo {"hook_event_name":"Stop"} | py -3 hooks\codex-status.py --dry-run`
 
-兩支 hook 預設都送到 `127.0.0.1:57999`，要送到別台電腦時，設定環境變數 `AGENT_STATUS_HOST`／`AGENT_STATUS_PORT`
-（那台的 `config.json` 也要把 `udp.host` 改成 `0.0.0.0`，並開防火牆）。
+Both hooks send to `127.0.0.1:57999`. To send to another computer, set the environment variables
+`AGENT_STATUS_HOST` / `AGENT_STATUS_PORT`. On that computer, set `udp.host` to `0.0.0.0` in `config.json` and allow
+the port in the firewall.
 
-## 設定（`config.json`）
+## Configuration
 
-全部都可以省略。
+All settings in `config.json` are optional.
 
-| 欄位 | 預設 | 說明 |
+| Key | Default | Meaning |
 |---|---|---|
-| `lang` | `zh-TW` | 畫面語言：`zh-TW` 或 `en` |
-| `pet` | `pets/beelu/atlas.png` | 角色圖。可以指向你自己的 **Codex pet 資料夾**或其中的 `spritesheet.png`（需要 Pillow） |
-| `weather` | 無（不顯示天氣卡） | `name`、`lat`、`lon`；另有 `rain_alert_pct`（60）、`rain_alert_mm`（0.1）、`rain_ahead_hours`（2）、`refresh_min`（30）、`temperature_unit`（`fahrenheit`）、`use_http`（`true` = 改用 http，給會攔截 HTTPS 的公司網路） |
-| `display_hours` | 無（一直亮） | 只在這段時間顯示，其他時間全黑：`days`（1 = 週一 … 7 = 週日）、`start`、`end`、`off_dates`、`on_dates`（`YYYY-MM-DD`，優先於星期設定） |
-| `agent_stale_hours` | 3 | 超過這麼久沒收到某個 agent 的消息，就當它離線 |
-| `http_port`、`udp` | 8765、`127.0.0.1:57999` | 改 `http_port` 時，`screen.cmd` 也要加 `-Port` |
+| `lang` | `zh-TW` | Page language: `zh-TW` or `en` |
+| `pet` | `pets/beelu/atlas.png` | The character image. Can point to your own **Codex pet folder** or its `spritesheet.png` (needs Pillow) |
+| `weather` | none (no weather card) | `name`, `lat`, `lon`; optional `rain_alert_pct` (60), `rain_alert_mm` (0.1), `rain_ahead_hours` (2), `refresh_min` (30), `temperature_unit` (`fahrenheit`), `use_http` (`true` = plain http, for networks that break HTTPS) |
+| `display_hours` | none (always on) | Show the page only in this window and keep the screen black otherwise: `days` (1 = Monday … 7 = Sunday), `start`, `end`, `off_dates`, `on_dates` (`YYYY-MM-DD`, these override `days`) |
+| `agent_stale_hours` | 3 | An agent with no packet for this long is shown as offline |
+| `http_port`, `udp` | 8765, `127.0.0.1:57999` | If you change `http_port`, also pass `-Port` to `screen.cmd` |
 
-改完設定要重啟伺服器：`screen.cmd -Stop` 後再雙擊 `screen.cmd`。
+After changing the config, restart the server: `screen.cmd -Stop`, then double-click `screen.cmd`.
 
-### 天氣地區怎麼選
+### Choosing the weather location
 
-天氣來自 [Open-Meteo](https://open-meteo.com/)（免費、不用 API key），只要填經緯度。用地名查：
+Weather comes from [Open-Meteo](https://open-meteo.com/) (free, no API key); you only need the latitude and
+longitude. To look a place up by name:
 
 ```
-py -3 tools\find_location.py 台中
-py -3 tools\find_location.py 台中 --pick 1
+py -3 tools\find_location.py London --lang en
+py -3 tools\find_location.py London --lang en --pick 1
 ```
 
-第一行列出符合的地點，第二行把第 1 個寫進 `config.json`。公司網路會攔截 HTTPS（出現 `CERTIFICATE_VERIFY_FAILED`）時加 `--http`。也可以從 Google 地圖右鍵複製經緯度，自己填。
+The first command lists matching places; the second writes match no. 1 into `config.json`. If you get
+`CERTIFICATE_VERIFY_FAILED` (a network that intercepts HTTPS), add `--http`. You can also copy the coordinates from a
+map and fill them in yourself.
 
-**下雨提醒**：之後 2 小時內有某小時「降雨機率 ≥ 60% **且**預測雨量 ≥ 0.1 mm」，天氣卡會顯示「☔ 15 點會下雨」。
-加雨量條件是因為 Open-Meteo 的降雨機率來自集合預報，在台灣常常偏高（各模型都預測 0 mm 時也會報 70～80%）。
-覺得太常或太少提醒，就調 `rain_alert_pct`／`rain_alert_mm`。
+**Rain alert**: if an hour within the next 2 hours has a rain probability ≥ 60% **and** forecast rain ≥ 0.1 mm, the
+weather card shows "☔ Rain at 15:00". The rain amount condition is there because Open-Meteo's probability comes from
+ensemble forecasts and can report 70–80% even when every model forecasts 0 mm (this happens a lot in Taiwan). Tune
+`rain_alert_pct` / `rain_alert_mm` if you get too many or too few alerts.
 
-## 換成自己的 pet
+## Using your own pet
 
-Codex 的 pet spritesheet（1536 x 2288，8 欄 x 11 列）可以直接用：`config.json` 填
-`"pet": "C:\\path\\to\\你的 pet 資料夾"`。伺服器啟動時會只挑用到的 8 列動作，需要 `py -3 -m pip install pillow`。
+A Codex pet spritesheet (1536 x 2288, 8 columns x 11 rows) works as is: set `"pet": "C:\\path\\to\\your-pet-folder"`
+in `config.json`. At startup the server keeps only the 8 rows it uses; this needs `py -3 -m pip install pillow`.
 
-## 預覽版面
+## Previewing the layout
 
 ```
 py -3 server.py --preview preview.html
 ```
 
-用瀏覽器開 `preview.html`（示範資料），網址加 `?scene=think`／`done`／`alert`／`night` 看其他狀態。
-小螢幕的比例可以用瀏覽器開發者工具設成 800 x 488 左右來看。
-實際頁面網址加 `?force=off` 強制熄屏、`?force=on` 忽略 `display_hours`（測試用）。
+Open `preview.html` in a browser (demo data). Add `?scene=think`, `done`, `alert` or `night` to the URL to see other
+states. To see it at the size of a small screen, set the browser's device toolbar to about 800 x 488.
+On the live page, `?force=off` forces the black screen and `?force=on` ignores `display_hours` (for testing).
 
-## 已知限制
+## Known limitations
 
-- PC 要開著並持續投影；螢幕鎖定或睡眠時投影會斷。
-- 同一個 agent 同時開好幾個 session 時，共用同一張卡（顯示最後一個事件）。
-- 只顯示 Claude Code 和 Codex。
+- The PC must stay on and keep projecting; locking the screen or sleeping drops a wireless display.
+- Several sessions of the same agent share one card (it shows the latest event).
+- Only Claude Code and Codex are supported.
 
-## 授權
+## License
 
-- 程式碼：[MIT](LICENSE)
-- 必嚕圖片（`pets/beelu/`）：[CC BY-NC 4.0](pets/beelu/LICENSE.md)，不在 MIT 範圍內
-- Claude、OpenAI 圖示的 SVG path 取自 [simple-icons](https://simpleicons.org/)，商標屬於各自的公司
-
----
-
-## English
-
-A small always-on status screen for **Claude Code** and **Codex**: running / needs your approval / done / offline,
-plus the current tool and file. Hooks send a short UDP packet to `server.py` on `127.0.0.1`; `screen.ps1` opens the
-page in a Chrome / Edge kiosk on a small second monitor (e.g. a Win+K wireless display) when it appears.
-Only state and "tool + file name / first command word" are sent — never prompts, full commands, file contents or output.
-
-Quick start: copy `config.example.json` to `config.json` (set `"lang": "en"`, pick a location with
-`py -3 tools\find_location.py <city> --lang en --pick 1`), merge the hook examples in `hooks/` into your Claude Code
-`settings.json` and Codex `hooks.json` (then trust them with `/hooks` in Codex), and double-click `screen.cmd`.
-Code is MIT; the bundled cat sprite is CC BY-NC 4.0.
+- Code: [MIT](LICENSE)
+- Beelu image (`pets/beelu/`): [CC BY-NC 4.0](pets/beelu/LICENSE.md), not covered by the MIT license
+- Claude and OpenAI icon SVG paths are from [simple-icons](https://simpleicons.org/); the logos are trademarks of
+  their owners
