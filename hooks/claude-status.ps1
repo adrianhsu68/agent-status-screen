@@ -26,13 +26,42 @@ function Leaf([string]$p) {
     return ($p.TrimEnd('\', '/') -split '[\\/]')[-1]
 }
 
-# First "real" command: skip `cd ...`, `X=...` assignments and PowerShell `$x = ...`
+# Split on ; && || and newlines that are outside quotes
+function Split-Commands([string]$cmd) {
+    $parts = New-Object System.Collections.Generic.List[string]
+    $buf = New-Object System.Text.StringBuilder
+    $quote = [char]0
+    for ($i = 0; $i -lt $cmd.Length; $i++) {
+        $c = $cmd[$i]
+        if ($quote -ne [char]0) {
+            [void]$buf.Append($c)
+            if ($c -eq $quote) { $quote = [char]0 }
+        } elseif ($c -eq [char]0x22 -or $c -eq [char]0x27) {
+            $quote = $c; [void]$buf.Append($c)
+        } elseif ($c -eq ';' -or $c -eq "`r" -or $c -eq "`n") {
+            $parts.Add($buf.ToString()); [void]$buf.Clear()
+        } elseif ($i + 1 -lt $cmd.Length -and ($cmd.Substring($i, 2) -eq '&&' -or $cmd.Substring($i, 2) -eq '||')) {
+            $parts.Add($buf.ToString()); [void]$buf.Clear(); $i++
+        } else {
+            [void]$buf.Append($c)
+        }
+    }
+    $parts.Add($buf.ToString())
+    return $parts
+}
+
+# First "real" command: skip `cd ...`, `X=...` assignments and PowerShell `$x = ...`.
+# Only a plain file-name-like word is returned; anything else (a fragment of a quoted argument,
+# a secret, ...) returns '' so only the tool name is shown.
 function MainCommand([string]$cmd) {
-    foreach ($seg in ($cmd -split ';|&&|\|\||\r?\n')) {
-        if ($seg -notmatch '^\s*(\x22([^\x22]*)\x22|\x27([^\x27]*)\x27|(\S+))') { continue }   # quoted paths may contain spaces
+    foreach ($seg in (Split-Commands $cmd)) {
+        if ($seg -notmatch '^\s*&?\s*(\x22([^\x22]*)\x22|\x27([^\x27]*)\x27|(\S+))') { continue }   # quoted paths may contain spaces
         $first = $Matches[2] + $Matches[3] + $Matches[4]
-        if ($first -match '^(cd|pushd|Set-Location)$' -or $first -match '^\$?\w+=' -or $seg -match '^\s*\$\w+\s*=') { continue }
-        return Leaf $first
+        if ($first -match '^\$?\w+\s*=' -or $seg -match '^\s*\$?\w+\s*=') { continue }
+        $name = Leaf $first
+        if ($name -match '^(cd|pushd|Set-Location)$') { continue }
+        if ($name -cmatch '^[A-Za-z0-9][A-Za-z0-9._+-]{0,39}$') { return $name }
+        return ''
     }
     return ''
 }
@@ -44,7 +73,7 @@ function ToolSummary($tool, $in) {
         '^Grep$' { return ('search ' + (Leaf $in.path)).Trim() }     # not the pattern
         '^Glob$' { return 'find ' + (Leaf $in.pattern) }
         '^mcp__' { return ($tool -split '__')[-1] }
-        '^(Agent|Task)$' { return "Agent " + $in.description }
+        '^(Agent|Task)$' { return 'Agent' }                          # not the description (free text)
         default { return $tool }
     }
 }

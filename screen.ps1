@@ -88,9 +88,10 @@ function Start-Server {
 }
 function Start-Watch {
     if (-not (Get-Watcher)) {
-        Start-Process powershell.exe -WindowStyle Hidden -ArgumentList @(
-            '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$PSCommandPath`"", '-Watch',
-            '-Port', $Port, '-MaxWidth', $MaxWidth)
+        $argv = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$PSCommandPath`"", '-Watch',
+                  '-Port', $Port, '-MaxWidth', $MaxWidth)
+        if ($Python) { $argv += @('-Python', "`"$Python`"") }
+        Start-Process powershell.exe -WindowStyle Hidden -ArgumentList $argv
     }
 }
 function Open-Kiosk($s) {
@@ -119,12 +120,14 @@ if (-not $Browser) {
 
 if ($Watch) {
     if (Get-Watcher) { return }              # already watching
+    $shownOn = ''                             # bounds of the screen the kiosk was opened on
     while ($true) {
         Start-Server                          # restart it if it was closed
         $s = Find-Screen
         $kiosk = Get-Kiosk
-        if ($s -and -not $kiosk -and (Test-Server)) { Open-Kiosk $s }
-        elseif (-not $s -and $kiosk) { Stop-Kiosk }   # Windows moves the window to the main screen otherwise
+        # Reopen also when the target screen changed (e.g. one of two small screens went away)
+        if ($s -and (-not $kiosk -or "$s" -ne $shownOn) -and (Test-Server)) { Open-Kiosk $s; $shownOn = "$s" }
+        elseif (-not $s -and $kiosk) { Stop-Kiosk; $shownOn = '' }   # Windows moves the window to the main screen otherwise
         Start-Sleep -Seconds 3
     }
 }

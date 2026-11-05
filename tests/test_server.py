@@ -83,9 +83,13 @@ class WeatherTest(unittest.TestCase):
         self.assertIsNone(server.weather_view(None, 0, self.w))
 
     def test_url_uses_unixtime(self):
-        url = server.weather_url({'lat': 25.0, 'lon': 121.5})
+        url = server.weather_url({**self.w, 'lat': 25.0, 'lon': 121.5})
         self.assertIn('timeformat=unixtime', url)
+        self.assertIn('forecast_hours=4', url)
         self.assertTrue(url.startswith('https://'))
+        url = server.weather_url({**self.w, 'lat': 25.0, 'lon': 121.5, 'rain_ahead_hours': 6, 'use_http': True})
+        self.assertIn('forecast_hours=8', url)
+        self.assertTrue(url.startswith('http://'))
 
 
 class ConfigAndPageTest(unittest.TestCase):
@@ -121,6 +125,15 @@ class CodexHookTest(unittest.TestCase):
                             'tool_input': {'command': patch}}), 'CODEX:RUN|Edit b.py')
         self.assertEqual(m({'hook_event_name': 'PermissionRequest', 'tool_name': 'shell'}), 'CODEX:WAIT|approve shell')
         self.assertIsNone(m({'hook_event_name': 'Other'}))
+
+    def test_command_name_never_leaks_quoted_text(self):
+        name = codex_status.command_name
+        self.assertEqual(name("TOKEN='prefix;sensitive_value'; curl https://x"), 'curl')
+        self.assertEqual(name('TOKEN="a;b c"; curl x'), 'curl')
+        self.assertEqual(name('python -c "import os;print(1)"'), 'python')
+        self.assertEqual(name('"C:\\Program Files\\Git\\bin\\git.exe" log'), 'git.exe')
+        self.assertEqual(name('$x = 1; npm test'), 'npm')
+        self.assertEqual(name('secret#$%stuff run'), '')
 
 
 if __name__ == '__main__':

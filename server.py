@@ -99,7 +99,8 @@ def weather_url(w):
     q = {'latitude': w['lat'], 'longitude': w['lon'],
          'current': 'temperature_2m,weather_code,is_day',
          'hourly': 'precipitation_probability,precipitation',
-         'forecast_hours': 4, 'timezone': 'auto', 'timeformat': 'unixtime'}
+         # current hour + the alert window + the 3 hours the page shows
+         'forecast_hours': max(4, int(w['rain_ahead_hours']) + 2), 'timezone': 'auto', 'timeformat': 'unixtime'}
     if w.get('temperature_unit'):
         q['temperature_unit'] = w['temperature_unit']
     scheme = 'http' if w.get('use_http') else 'https'     # use_http: for networks that break HTTPS
@@ -158,10 +159,10 @@ def png_size(data):
 def load_sprite(path):
     """Bundled atlas (8 rows) as is; a full Codex spritesheet (11 rows) is cut down with Pillow."""
     path = Path(path)
-    if path.is_dir():
-        path = path / 'spritesheet.png'
     if not path.is_absolute():
         path = HERE / path
+    if path.is_dir():
+        path = path / 'spritesheet.png'
     data = path.read_bytes()
     size = png_size(data)
     if size == (8 * CELL_W, len(POSES) * CELL_H):
@@ -214,7 +215,13 @@ class App:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.bind((udp['host'], udp['port']))
         while True:
-            data, _ = sock.recvfrom(512)
+            try:
+                data, _ = sock.recvfrom(65535)   # Windows raises an error instead of truncating a big datagram
+            except OSError as e:
+                print('udp:', e, flush=True)
+                continue
+            if len(data) > 512:
+                continue
             text = data.decode('ascii', 'ignore')
             with self.lock:
                 self.agents.receive(text, time.time())
@@ -281,8 +288,9 @@ def main():
     if args.preview:
         url = 'data:image/png;base64,' + base64.b64encode(load_sprite(cfg['pet'])).decode('ascii')
         cfg['weather'] = cfg['weather'] or {'name': 'demo'}
-        args.preview.write_text(make_page(url, cfg, demo=True), encoding='utf-8', newline='\n')
-        print(f'wrote {args.preview}; add ?scene=wait / done / alert / night to the URL for other states')
+        with open(args.preview, 'w', encoding='utf-8', newline='\n') as f:   # write_text(newline=) needs 3.10
+            f.write(make_page(url, cfg, demo=True))
+        print(f'wrote {args.preview}; add ?scene=think / done / alert / night to the URL for other states')
     else:
         serve(cfg)
 

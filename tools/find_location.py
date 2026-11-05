@@ -46,6 +46,8 @@ def main():
         print('\nrun again with --pick N to write it into', args.config.name)
         return
 
+    if not 1 <= args.pick <= len(results):
+        sys.exit(f'--pick must be 1 to {len(results)}')
     r = results[args.pick - 1]
     cfg = {}
     if args.config.exists():

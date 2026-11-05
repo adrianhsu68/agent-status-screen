@@ -25,16 +25,49 @@ def leaf(value):
     return ntpath.basename(str(value).rstrip('\\/'))
 
 
+# A command name we are willing to show: plain file-name characters only. Anything else (a fragment of a
+# quoted argument, a secret, ...) is dropped and only the tool name is shown.
+SAFE_NAME = re.compile(r'^[A-Za-z0-9][A-Za-z0-9._+-]{0,39}$')
+
+
+def split_commands(command):
+    """Split on ; && || and newlines that are outside quotes."""
+    parts, buf, quote, i = [], [], None, 0
+    while i < len(command):
+        c = command[i]
+        if quote:
+            buf.append(c)
+            if c == quote:
+                quote = None
+        elif c in '"\'':
+            quote = c
+            buf.append(c)
+        elif c in ';\r\n':
+            parts.append(''.join(buf))
+            buf = []
+        elif command.startswith(('&&', '||'), i):
+            parts.append(''.join(buf))
+            buf = []
+            i += 1
+        else:
+            buf.append(c)
+        i += 1
+    parts.append(''.join(buf))
+    return parts
+
+
 def command_name(command):
-    for part in re.split(r';|&&|\|\||\r?\n', command):
+    """First real command (skips cd and variable assignments), e.g. 'git'; '' when unsure."""
+    for part in split_commands(command):
         part = part.strip()
-        if re.match(r'^\$?\w+\s*=', part):
+        if not part or re.match(r'^\$?\w+\s*=', part):
             continue
         match = re.match(r'''^(?:&\s*)?(?:"([^"]+)"|'([^']+)'|([^\s]+))''', part)
         if match:
             name = leaf(next(group for group in match.groups() if group is not None))
-            if name.lower() not in ('cd', 'pushd', 'set-location'):
-                return name
+            if name.lower() in ('cd', 'pushd', 'set-location'):
+                continue
+            return name if SAFE_NAME.match(name) else ''
     return ''
 
 
@@ -51,7 +84,7 @@ def activity(event):
         command = args.get('command', args.get('cmd', ''))
         if isinstance(command, list):
             command = ' '.join(str(item) for item in command)
-        return 'Bash ' + command_name(str(command))
+        return ('Bash ' + command_name(str(command))).strip()
     if tool in ('apply_patch', 'Edit', 'Write'):
         # Read only a patch header; never send the body.
         patch = args.get('command', args.get('patch', args.get('input', '')))
