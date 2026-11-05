@@ -1,0 +1,82 @@
+{
+  "description": "Forward Codex activity labels to agent-status-screen (UDP 127.0.0.1:57999).",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py -3 C:\\path\\to\\agent-status-screen\\hooks\\codex-status.py",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py -3 C:\\path\\to\\agent-status-screen\\hooks\\codex-status.py",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py -3 C:\\path\\to\\agent-status-screen\\hooks\\codex-status.py",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py -3 C:\\path\\to\\agent-status-screen\\hooks\\codex-status.py",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py -3 C:\\path\\to\\agent-status-screen\\hooks\\codex-status.py",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "Interrupt": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py -3 C:\\path\\to\\agent-status-screen\\hooks\\codex-status.py",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py -3 C:\\path\\to\\agent-status-screen\\hooks\\codex-status.py",
+            "timeout": 3
+          }
+        ]
+      }
+    ]
+  }
+}
