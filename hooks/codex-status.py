@@ -56,18 +56,28 @@ def split_commands(command):
     return parts
 
 
+# A skipped `cd ...` / `X=...` segment must be this simple (one plain or fully quoted value, no escapes,
+# substitutions or a value ending in a backslash). Otherwise the segment boundaries cannot be trusted
+# (e.g. TOKEN="a\";secret") and only the tool name is sent.
+SKIP_START = re.compile(r'^\s*(?:(?:cd|pushd|set-location)(?:\s|$)|\$?(?:\w+:)?\w+\s*=)', re.I)
+SIMPLE_SKIP = re.compile(r"""^\s*(?:(?:cd|pushd|set-location)\s*|\$?(?:\w+:)?\w+\s*=\s*)"""
+                         r"""(?:"(?:[^"`$]*[^"`$\\])?"|'[^']*'|(?:[^\s"'`$();&|]*[^\s"'`$();&|\\])?)\s*$""", re.I)
+
+
 def command_name(command):
-    """First real command (skips cd and variable assignments), e.g. 'git'; '' when unsure."""
+    """First real command (skips simple cd and variable assignments), e.g. 'git'; '' when unsure."""
     for part in split_commands(command):
-        part = part.strip()
-        if not part or re.match(r'^\$?(?:\w+:)?\w+\s*=', part):   # also $env:X = ...
+        if not part.strip():
             continue
-        match = re.match(r'''^(?:&\s*)?(?:"([^"]+)"|'([^']+)'|([^\s]+))''', part)
-        if match:
-            name = leaf(next(group for group in match.groups() if group is not None))
-            if name.lower() in ('cd', 'pushd', 'set-location'):
+        if SKIP_START.match(part):
+            if SIMPLE_SKIP.match(part):
                 continue
-            return name if SAFE_NAME.match(name) else ''
+            return ''
+        match = re.match(r'''^\s*(?:&\s*)?(?:"([^"]+)"|'([^']+)'|([^\s]+))''', part)
+        if not match:
+            return ''
+        name = leaf(next(group for group in match.groups() if group is not None))
+        return name if SAFE_NAME.match(name) else ''
     return ''
 
 

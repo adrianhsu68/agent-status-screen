@@ -50,16 +50,23 @@ function Split-Commands([string]$cmd) {
     return $parts
 }
 
-# First "real" command: skip `cd ...`, `X=...` assignments and PowerShell `$x = ...`.
-# Only a plain file-name-like word is returned; anything else (a fragment of a quoted argument,
-# a secret, ...) returns '' so only the tool name is shown.
+# First "real" command: skip `cd ...`, `X=...` and `$x = ...` / `$env:X = ...`, but only when that segment is
+# simple (one plain or fully quoted value, no escapes, substitutions or a value ending in a backslash);
+# otherwise the segment boundaries cannot be trusted (e.g. TOKEN="a\";secret") and '' is returned.
+# The name is returned only when it is a plain file-name-like word, so only the tool name is shown otherwise.
+$SkipStart = '^\s*(?:(?:cd|pushd|set-location)(?:\s|$)|\$?(?:\w+:)?\w+\s*=)'
+$SimpleSkip = @'
+^\s*(?:(?:cd|pushd|set-location)\s*|\$?(?:\w+:)?\w+\s*=\s*)(?:"(?:[^"`$]*[^"`$\\])?"|'[^']*'|(?:[^\s"'`$();&|]*[^\s"'`$();&|\\])?)\s*$
+'@.Trim()
 function MainCommand([string]$cmd) {
     foreach ($seg in (Split-Commands $cmd)) {
-        if ($seg -notmatch '^\s*&?\s*(\x22([^\x22]*)\x22|\x27([^\x27]*)\x27|(\S+))') { continue }   # quoted paths may contain spaces
-        $first = $Matches[2] + $Matches[3] + $Matches[4]
-        if ($first -match '^\$?(\w+:)?\w+\s*=' -or $seg -match '^\s*\$?(\w+:)?\w+\s*=') { continue }   # also $env:X = ...
-        $name = Leaf $first
-        if ($name -match '^(cd|pushd|Set-Location)$') { continue }
+        if (-not $seg.Trim()) { continue }
+        if ($seg -match $SkipStart) {
+            if ($seg -match $SimpleSkip) { continue }
+            return ''
+        }
+        if ($seg -notmatch '^\s*&?\s*(\x22([^\x22]*)\x22|\x27([^\x27]*)\x27|(\S+))') { return '' }   # quoted paths may contain spaces
+        $name = Leaf ($Matches[2] + $Matches[3] + $Matches[4])
         if ($name -cmatch '^[A-Za-z0-9][A-Za-z0-9._+-]{0,39}$') { return $name }
         return ''
     }

@@ -80,7 +80,7 @@ Save [hooks/codex-hooks.example.json](hooks/codex-hooks.example.json) as `%USERP
 it into your existing file), then review and trust the hooks with `/hooks` in Codex. Untrusted hooks are skipped.
 The path in the command must not contain spaces, and do not put quotes around it.
 
-Test: `echo {"hook_event_name":"Stop"} | py -3 hooks\codex-status.py --dry-run`
+Test (PowerShell): `'{"hook_event_name":"Stop"}' | py -3 hooks\codex-status.py --dry-run`
 
 Both hooks send to `127.0.0.1:57999`. To send to another computer, set the environment variables
 `AGENT_STATUS_HOST` / `AGENT_STATUS_PORT`. On that computer, set `udp.host` to `0.0.0.0` in `config.json` and allow

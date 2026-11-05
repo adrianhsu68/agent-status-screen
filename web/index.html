@@ -226,21 +226,30 @@
     }
   }
 
+  // Build elements with textContent only: data from /status never becomes HTML
+  function el(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    e.textContent = text;
+    return e;
+  }
+
   function renderWeather() {
     const w = status?.weather;
     $('wIcon').textContent = WEATHER[w?.icon] ?? '';
     $('wTemp').textContent = w ? `${w.temp}°` : '—';
-    $('wRain').innerHTML = w ? `<span class="drop">☂</span>${w.rain}<small>%</small>` : '';
+    $('wRain').replaceChildren(...(w ? [el('span', 'drop', '☂'), String(w.rain), el('small', '', '%')] : []));
     $('rainAlert').textContent = !w ? '' : w.rain >= w.alert_pct ? T.umbrella
       : w.alert != null ? T.rainAt(new Date(w.alert * 1000).getHours()) : '';
     const hours = (w?.hourly ?? []).slice(1, 4);   // the current hour is the big number above
     const key = JSON.stringify(hours);
     if ($('hours').dataset.key !== key) {
       $('hours').dataset.key = key;
-      $('hours').innerHTML = hours.map(([t, p, mm]) => {
-        const wet = p >= w.alert_pct && mm >= w.alert_mm;
-        return `<div class="${wet ? 'wet' : ''}">${fmtHour.format(t * 1000)}<b class="num">${p}%</b></div>`;
-      }).join('');
+      $('hours').replaceChildren(...hours.map(([t, p, mm]) => {
+        const cell = el('div', p >= w.alert_pct && mm >= w.alert_mm ? 'wet' : '', fmtHour.format(t * 1000));
+        cell.append(el('b', 'num', `${p}%`));
+        return cell;
+      }));
     }
   }
 

@@ -77,6 +77,14 @@ class WeatherTest(unittest.TestCase):
         self.assertEqual(server.rain_now(hourly, 3700), 10)
         self.assertIsNone(server.rain_alert(hourly, 10900, self.w))  # current hour already rainy
 
+    def test_tampered_values_are_rejected(self):
+        j = self.sample()
+        j['hourly']['precipitation_probability'][2] = '<img src=x onerror=alert(1)>'
+        self.assertEqual(server.parse_weather(j)['hourly'][2][1], 0)
+        j['current']['temperature_2m'] = '<b>'
+        with self.assertRaises(ValueError):
+            server.parse_weather(j)
+
     def test_view_drops_past_hours(self):
         v = server.weather_view(server.parse_weather(self.sample()), 7300, {**self.w, 'name': 'x'})
         self.assertEqual([h[0] for h in v['hourly']], [7200, 10800, 14400])
@@ -135,6 +143,10 @@ class CodexHookTest(unittest.TestCase):
         self.assertEqual(name('$x = 1; npm test'), 'npm')
         self.assertEqual(name("$env:DEBUG = '1'; npm test"), 'npm')
         self.assertEqual(name('secret#$%stuff run'), '')
+        # escaped quotes / substitutions in a skipped assignment: segment boundaries cannot be trusted
+        self.assertEqual(name('TOKEN="prefix\\";sensitive_value;rest"; curl x'), '')
+        self.assertEqual(name('X=$(echo a; secret b); curl x'), '')
+        self.assertEqual(name('cd "C:\\Program Files\\x" && git status'), 'git')
 
 
 if __name__ == '__main__':

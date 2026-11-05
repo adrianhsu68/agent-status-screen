@@ -69,7 +69,7 @@ Claude Code / Codex hooks ──UDP 127.0.0.1:57999──▶ server.py ──HTT
 （已經有的話合併進去），然後在 Codex 裡用 `/hooks` 檢視並信任它們；沒信任的 hook 會被跳過。
 指令裡的路徑不能有空白，也不要在前面加引號。
 
-測試：`echo {"hook_event_name":"Stop"} | py -3 hooks\codex-status.py --dry-run`
+測試（PowerShell）：`'{"hook_event_name":"Stop"}' | py -3 hooks\codex-status.py --dry-run`
 
 兩支 hook 預設都送到 `127.0.0.1:57999`，要送到別台電腦時，設定環境變數 `AGENT_STATUS_HOST`／`AGENT_STATUS_PORT`
 （那台的 `config.json` 也要把 `udp.host` 改成 `0.0.0.0`，並開防火牆）。

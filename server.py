@@ -107,14 +107,23 @@ def weather_url(w):
     return f'{scheme}://api.open-meteo.com/v1/forecast?' + urllib.parse.urlencode(q)
 
 
+def _number(value, default=None):
+    """Only real numbers get through (the response may be tampered with when use_http is on)."""
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return value
+    if default is None:
+        raise ValueError(f'not a number: {value!r}')
+    return default
+
+
 def parse_weather(j):
     c, h = j['current'], j['hourly']
     icon = WMO_ICON.get(c['weather_code'], 'rain')
     if icon == 'sun' and not c['is_day']:
         icon = 'moon'
-    hourly = [[t, p or 0, mm or 0] for t, p, mm in
-              zip(h['time'], h['precipitation_probability'], h['precipitation'])]
-    return {'temp': round(c['temperature_2m']), 'icon': icon, 'hourly': hourly}
+    hourly = [[int(_number(t)), round(min(100, max(0, _number(p, 0)))), max(0, _number(mm, 0))]
+              for t, p, mm in zip(h['time'], h['precipitation_probability'], h['precipitation'])]
+    return {'temp': round(_number(c['temperature_2m'])), 'icon': icon, 'hourly': hourly}
 
 
 def rain_now(hourly, now):
