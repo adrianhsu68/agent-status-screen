@@ -8,6 +8,9 @@ The most recent valid packet decides which source is "active" (last takes priori
 
 SOURCES = ('CLAUDE', 'CODEX')
 STATES = ('RUN', 'WAIT', 'DONE', 'OFF')
+# `codex exec` ends its session as soon as the task is done, so OFF arrives about a second after DONE.
+# An OFF this soon after the same source's DONE is ignored, so the card keeps showing "done N min ago".
+OFF_AFTER_DONE_GRACE = 5
 
 
 class AgentStatus:
@@ -32,6 +35,8 @@ class AgentStatus:
         if source not in self.sources or state not in STATES:
             return False
         status = self.sources[source]
+        if state == 'OFF' and status['state'] == 'DONE' and 0 <= now - status['at'] <= OFF_AFTER_DONE_GRACE:
+            return True
         if state == 'DONE' and status['state'] != 'DONE':
             status['done_at'] = now
         status['state'] = state

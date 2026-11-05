@@ -35,6 +35,23 @@ class AgentStatusTest(unittest.TestCase):
         a.receive('CLAUDE:DONE', 9)
         self.assertEqual(a.sources['CLAUDE']['done_at'], 3)          # repeated DONE keeps the first time
 
+    def test_off_right_after_done_keeps_done(self):
+        a = AgentStatus()
+        a.receive('CODEX:DONE', 20)                                   # codex exec: OFF follows within a second
+        a.receive('CLAUDE:RUN|x', 20.5)
+        before = a.snapshot()
+        self.assertTrue(a.receive('CODEX:OFF|', 21))
+        self.assertEqual((a.snapshot(), a.active), (before, 'CLAUDE'))  # nothing changes, not even 'at'
+        self.assertTrue(a.receive('CODEX:OFF|', 25))                   # 5 s is still ignored
+        a.receive('CODEX:OFF|', 25.1)
+        self.assertEqual(a.sources['CODEX']['state'], 'OFF')
+        a.receive('CODEX:DONE', 100)
+        a.receive('CODEX:OFF|', 99)                                   # clock stepped back: not ignored
+        self.assertEqual(a.sources['CODEX']['state'], 'OFF')
+        a.receive('CODEX:DONE', 30)
+        a.receive('CODEX:OFF|', 40)                                   # interactive CLI closed later
+        self.assertEqual(a.sources['CODEX']['state'], 'OFF')
+
     def test_invalid_packets(self):
         a = AgentStatus()
         for text in ('GEMINI:RUN', 'CLAUDE:JUMP', '', 'hello'):

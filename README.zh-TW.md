@@ -68,6 +68,7 @@ Claude Code / Codex hooks ──UDP 127.0.0.1:57999──▶ server.py ──HTT
 把 [hooks/codex-hooks.example.json](hooks/codex-hooks.example.json) 存成 `%USERPROFILE%\.codex\hooks.json`
 （已經有的話合併進去），然後在 Codex 裡用 `/hooks` 檢視並信任它們；沒信任的 hook 會被跳過。
 指令裡的路徑不能有空白，也不要在前面加引號。
+`codex exec` 做完就結束 session，`DONE` 之後約 1 秒就送 `OFF`；畫面會忽略同一個 agent `DONE` 後 5 秒內的 `OFF`，維持顯示「完成 N 分鐘前」。互動式 session 在這 5 秒內真的關掉的話，卡片會停在完成，直到下一個封包或超過 `agent_stale_hours`。
 
 測試（PowerShell）：`'{"hook_event_name":"Stop"}' | py -3 hooks\codex-status.py --dry-run`
 

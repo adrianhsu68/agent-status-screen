@@ -79,6 +79,9 @@ Test: set `$env:AGENT_STATUS_DRYRUN=1` and run the script; it prints the packet 
 Save [hooks/codex-hooks.example.json](hooks/codex-hooks.example.json) as `%USERPROFILE%\.codex\hooks.json` (or merge
 it into your existing file), then review and trust the hooks with `/hooks` in Codex. Untrusted hooks are skipped.
 The path in the command must not contain spaces, and do not put quotes around it.
+`codex exec` ends its session right after the task, so its `OFF` arrives a second after `DONE`. The screen ignores an
+`OFF` within 5 seconds of the same agent's `DONE` and keeps showing "done N min ago". If you really quit an interactive
+session within those 5 seconds, the card stays "done" until the next packet or until `agent_stale_hours` passes.
 
 Test (PowerShell): `'{"hook_event_name":"Stop"}' | py -3 hooks\codex-status.py --dry-run`
 
