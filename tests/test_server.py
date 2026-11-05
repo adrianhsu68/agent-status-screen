@@ -133,6 +133,7 @@ class CodexHookTest(unittest.TestCase):
         self.assertEqual(name('python -c "import os;print(1)"'), 'python')
         self.assertEqual(name('"C:\\Program Files\\Git\\bin\\git.exe" log'), 'git.exe')
         self.assertEqual(name('$x = 1; npm test'), 'npm')
+        self.assertEqual(name("$env:DEBUG = '1'; npm test"), 'npm')
         self.assertEqual(name('secret#$%stuff run'), '')
 
 

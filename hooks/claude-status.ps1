@@ -57,7 +57,7 @@ function MainCommand([string]$cmd) {
     foreach ($seg in (Split-Commands $cmd)) {
         if ($seg -notmatch '^\s*&?\s*(\x22([^\x22]*)\x22|\x27([^\x27]*)\x27|(\S+))') { continue }   # quoted paths may contain spaces
         $first = $Matches[2] + $Matches[3] + $Matches[4]
-        if ($first -match '^\$?\w+\s*=' -or $seg -match '^\s*\$?\w+\s*=') { continue }
+        if ($first -match '^\$?(\w+:)?\w+\s*=' -or $seg -match '^\s*\$?(\w+:)?\w+\s*=') { continue }   # also $env:X = ...
         $name = Leaf $first
         if ($name -match '^(cd|pushd|Set-Location)$') { continue }
         if ($name -cmatch '^[A-Za-z0-9][A-Za-z0-9._+-]{0,39}$') { return $name }

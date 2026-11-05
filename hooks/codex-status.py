@@ -60,7 +60,7 @@ def command_name(command):
     """First real command (skips cd and variable assignments), e.g. 'git'; '' when unsure."""
     for part in split_commands(command):
         part = part.strip()
-        if not part or re.match(r'^\$?\w+\s*=', part):
+        if not part or re.match(r'^\$?(?:\w+:)?\w+\s*=', part):   # also $env:X = ...
             continue
         match = re.match(r'''^(?:&\s*)?(?:"([^"]+)"|'([^']+)'|([^\s]+))''', part)
         if match:
